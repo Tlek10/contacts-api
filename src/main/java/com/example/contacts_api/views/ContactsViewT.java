@@ -3,12 +3,15 @@ package com.example.contacts_api.views;
 import com.example.contacts_api.dto.ContactRequest;
 import com.example.contacts_api.dto.ContactResponse;
 import com.example.contacts_api.service.ContactsService;
+import com.example.contacts_api.utils.WordFileGenerator;
+
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextField;
@@ -35,31 +38,37 @@ public class ContactsViewT extends VerticalLayout {
         configureGrid();
 
         Button addContactButton = new Button("Add Contact", e -> openEditorDialog(null));
+        Button printAllButton = new Button("Print All", e -> {
+            List<ContactResponse> contacts = contactsService.getAllContacts();
+            generateWordFile(contacts);
+        });
 
-        add(addContactButton, grid);
+        add(new HorizontalLayout(addContactButton, printAllButton), grid);
 
         updateGrid();
     }
 
     private void configureGrid() {
-        grid.setColumns("id", "name", "phoneNumber", "email", "description", "createdAt");
+        grid.setColumns("name", "phoneNumber", "email", "description");
 
-        grid.getColumnByKey("id").setHeader("ID");
         grid.getColumnByKey("name").setHeader("Name");
-        grid.getColumnByKey("phoneNumber").setHeader("Phone Number");
         grid.getColumnByKey("email").setHeader("Email");
+        grid.getColumnByKey("phoneNumber").setHeader("Phone Number");
         grid.getColumnByKey("description").setHeader("Description");
-        grid.getColumnByKey("createdAt").setHeader("Created At");
 
         grid.addComponentColumn(contact -> {
             Button editButton = new Button("Edit", e -> openEditorDialog(contact));
             Button deleteButton = new Button("Delete", e -> deleteContact(contact));
-            deleteButton.getStyle().set("color", "red");
+            Button downloadButton = new Button("Download", e -> generateContactWordFile(contact));
 
-            VerticalLayout buttonsLayout = new VerticalLayout(editButton, deleteButton);
+            deleteButton.getStyle().set("color", "red");
+            downloadButton.getStyle().set("color", "blue");
+
+            VerticalLayout buttonsLayout = new VerticalLayout(editButton, deleteButton, downloadButton);
             buttonsLayout.setSpacing(false);
             return buttonsLayout;
         }).setHeader("Actions");
+
 
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES, GridVariant.LUMO_COLUMN_BORDERS);
 
@@ -136,4 +145,35 @@ public class ContactsViewT extends VerticalLayout {
         Notification.show("Contact deleted successfully");
         updateGrid();
     }
+
+    private void generateWordFile(List<ContactResponse> contacts) {
+        List<String> content = new ArrayList<>();
+        content.add("Contacts List");
+
+        for (ContactResponse contact : contacts) {
+            content.add(
+                    "ID: " + contact.getId() +
+                            "\nName: " + contact.getName() +
+                            "\nPhone: " + contact.getPhoneNumber() +
+                            "\nEmail: " + contact.getEmail() +
+                            "\nDescription: " + contact.getDescription()
+            );
+            content.add(""); // Добавляем пустую строку между контактами
+        }
+
+        WordFileGenerator.saveToWordFile(content, "contacts.docx");
+    }
+    private void generateContactWordFile(ContactResponse contact) {
+        List<String> content = List.of(
+                "Contact Details",
+                "ID: " + contact.getId(),
+                "Name: " + contact.getName(),
+                "Phone: " + contact.getPhoneNumber(),
+                "Email: " + contact.getEmail(),
+                "Description: " + contact.getDescription(),
+                "Created At: " + contact.getCreatedAt()
+        );
+        WordFileGenerator.saveToWordFile(content, "contact_" + contact.getId() + ".docx");
+    }
+
 }
